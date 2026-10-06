@@ -2,12 +2,14 @@
 /* global navigator, console */
 
 import SignOcaPdfCommon from "../sign_oca_pdf_common/sign_oca_pdf_common.esm.js";
+import {t} from "@odoo/owl";
 import {registry} from "@web/core/registry";
-import {renderToString} from "@web/core/utils/render";
 const SignRegistry = registry.category("sign_oca");
 import {useService} from "@web/core/utils/hooks";
 
 export default class SignOcaPdf extends SignOcaPdfCommon {
+    static propsSchema = {to_sign: t.boolean().optional()};
+
     setup() {
         super.setup(...arguments);
         this.orm = useService("orm");
@@ -18,23 +20,9 @@ export default class SignOcaPdf extends SignOcaPdfCommon {
         this.checkFilledAll();
     }
     checkToSign() {
-        this.props.updateControlPanel({
-            cp_content: {
-                $buttons: this.renderButtons(this.to_sign_update),
-            },
-        });
+        // The legacy control panel ($buttons) is gone: only the portal
+        // component renders this class, and it overrides checkToSign().
         this.to_sign = this.to_sign_update;
-    }
-    renderButtons(to_sign) {
-        var $buttons = $(
-            renderToString("oca_sign_oca.SignatureButtons", {
-                to_sign: to_sign,
-            })
-        );
-        $buttons.on("click.o_sign_oca_button_sign", () => {
-            this.signOca();
-        });
-        return $buttons;
     }
     async getLocation() {
         if (!this.info.ask_location || !navigator.geolocation) {
@@ -112,7 +100,7 @@ export default class SignOcaPdf extends SignOcaPdfCommon {
     postIframeField(item) {
         if (item.role_id === this.info.role_id) {
             var signatureItem = super.postIframeField(...arguments);
-            signatureItem[0].append(
+            signatureItem.append(
                 SignRegistry.get(item.field_type).generate(this, item, signatureItem)
             );
             return signatureItem;
@@ -130,6 +118,3 @@ export default class SignOcaPdf extends SignOcaPdfCommon {
         this.checkToSign();
     }
 }
-SignOcaPdf.props = {
-    to_sign: {type: Boolean, optional: true},
-};

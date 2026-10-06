@@ -1,17 +1,20 @@
 # Copyright 2023 Dixmit
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-from odoo.tests import Form
+from odoo.tests import Form, TransactionCase
 
-from odoo.addons.base.tests.common import BaseCommon
+from odoo.addons.base.tests.common import DISABLED_MAIL_CREATE_CONTEXT
 
 from .common import SignOcaCommon
 
 
-class TestSign(SignOcaCommon, BaseCommon):
+# Odoo 20 runs BaseCommon tests as a plain internal user, without the Sign
+# rights these tests rely on: run as superuser with mail creation disabled.
+class TestSign(SignOcaCommon, TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env = cls.env(context=dict(cls.env.context, **DISABLED_MAIL_CREATE_CONTEXT))
         cls.template = cls.env["sign.oca.template"].create(
             {
                 "data": cls.data,

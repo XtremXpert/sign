@@ -17,6 +17,12 @@ class SignController(http.Controller):
         bundle = "sign_oca.sign_assets"
         files, _ = request.env["ir.qweb"]._get_asset_content(bundle)
         asset = AssetsBundle(bundle, files)
+        if ext == "js" and not asset.javascripts:
+            # The bundle only holds styles: Odoo 20 would redirect the empty JS
+            # bundle URL onto itself (ERR_TOO_MANY_REDIRECTS in the iframe).
+            return request.make_response(
+                "", headers=[("Content-Type", "application/javascript")]
+            )
         mock_attachment = getattr(asset, ext)()
         if isinstance(
             mock_attachment, list
@@ -77,9 +83,14 @@ class PortalSign(CustomerPortal):
             )
         except (AccessError, MissingError):
             return request.redirect("/my")
-        return http.Stream.from_binary_field(
-            signer_sudo.request_id, "data"
-        ).get_response(mimetype="application/pdf")
+        # Odoo 20: binary field streams come from ir.binary.
+        return (
+            request.env["ir.binary"]
+            ._get_stream_from(
+                signer_sudo.request_id, "data", mimetype="application/pdf"
+            )
+            .get_response()
+        )
 
     @http.route(
         ["/sign_oca/info/<int:signer_id>/<string:access_token>"],

@@ -14,7 +14,20 @@ class SignOcaTemplateGenerate(models.TransientModel):
         )
         if not template:
             return []
-        return [(0, 0, {"role_id": role.id}) for role in template.item_ids.role_id]
+        # Odoo 20 computes the line defaults before the line's role is set:
+        # resolve the role's default partner here, where the role is known.
+        Signer = self.env["sign.oca.template.generate.signer"]
+        return [
+            (
+                0,
+                0,
+                {
+                    "role_id": role.id,
+                    "partner_id": Signer._get_default_partner_for_role(role).id,
+                },
+            )
+            for role in template.item_ids.role_id
+        ]
 
     template_id = fields.Many2one("sign.oca.template")
     signer_ids = fields.One2many(
@@ -58,12 +71,15 @@ class SignOcaTemplateGenerateSigner(models.TransientModel):
     _name = "sign.oca.template.generate.signer"
     _description = "Signature request signers"
 
-    def _get_default_partner(self):
+    def _get_default_partner_for_role(self, role):
         if self.env.context.get("default_sign_now"):
             return self.env.user.partner_id
-        if self.role_id.partner_selection_policy == "default":
-            return self.role_id.default_partner_id
-        return False
+        if role.partner_selection_policy == "default":
+            return role.default_partner_id
+        return self.env["res.partner"]
+
+    def _get_default_partner(self):
+        return self._get_default_partner_for_role(self.role_id) or False
 
     wizard_id = fields.Many2one(
         "sign.oca.template.generate",

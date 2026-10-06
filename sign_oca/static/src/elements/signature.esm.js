@@ -3,7 +3,7 @@
 
 import {SignatureDialog} from "@web/core/signature/signature_dialog";
 import {registry} from "@web/core/registry";
-import {renderToString} from "@web/core/utils/render";
+import {renderToElement} from "@web/core/utils/render";
 
 const signatureSignOca = {
     uploadSignature: function (parent, item, signatureItem, data) {
@@ -27,11 +27,11 @@ const signatureSignOca = {
         parent.checkFilledAll();
     },
     generate: function (parent, item, signatureItem) {
-        var input = $(
-            renderToString("sign_oca.sign_iframe_field_signature", {item: item})
-        )[0];
+        var input = renderToElement("sign_oca.sign_iframe_field_signature", {
+            item: item,
+        });
         if (item.role_id === parent.info.role_id) {
-            signatureItem[0].addEventListener("focus_signature", () => {
+            signatureItem.addEventListener("focus_signature", () => {
                 var signatureOptions = {
                     nameAndSignatureProps: {fontColor: "DarkBlue"},
                     defaultName: parent.info.partner.name,

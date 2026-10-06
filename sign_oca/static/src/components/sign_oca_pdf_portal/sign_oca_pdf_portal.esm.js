@@ -1,19 +1,21 @@
 /** @odoo-module **/
-/* global window */
+/* global window, document */
 
-import {App, useRef, whenReady} from "@odoo/owl";
-import {_t} from "@web/core/l10n/translation";
-import {makeEnv, startServices} from "@web/env";
+import {signal, t, whenReady} from "@odoo/owl";
+import {mountComponent} from "@web/env";
 import SignOcaPdf from "../sign_oca_pdf/sign_oca_pdf.esm.js";
-import {getTemplate} from "@web/core/templates";
 import {MainComponentsContainer} from "@web/core/main_components_container";
 import {rpc} from "@web/core/network/rpc";
 import {startSignItemNavigator} from "./sign_oca_navigator.esm";
 
 export class SignOcaPdfPortal extends SignOcaPdf {
+    static template = "sign_oca.SignOcaPdfPortal";
+    static components = {MainComponentsContainer};
+    static propsSchema = {access_token: t.string(), signer_id: t.number()};
+
     setup() {
         this.rpc = rpc;
-        this.signOcaFooter = useRef("sign_oca_footer");
+        this.signOcaFooter = signal.ref();
         this.signer_id = this.props.signer_id;
         this.access_token = this.props.access_token;
         super.setup(...arguments);
@@ -28,36 +30,29 @@ export class SignOcaPdfPortal extends SignOcaPdf {
     }
     checkToSign() {
         this.to_sign = this.to_sign_update;
-        if (this.to_sign_update) {
-            $(this.signOcaFooter.el).show();
-            $("#sign_oca_button").removeAttr("disabled");
-        } else {
-            $(this.signOcaFooter.el).hide();
-            $("#sign_oca_button").prop("disabled", true);
+        const button = document.getElementById("sign_oca_button");
+        if (this.signOcaFooter()) {
+            this.signOcaFooter().style.display = this.to_sign_update ? "" : "none";
+        }
+        if (button) {
+            button.disabled = !this.to_sign_update;
         }
     }
     postIframeFields() {
         super.postIframeFields(...arguments);
         this.checkFilledAll();
         // Is essential to make sure the navigator will never duplicate
-        const target = $(
-            this.iframe.el.contentDocument.getElementById("viewerContainer")
-        );
-        const navigator = $(
-            this.iframe.el.contentDocument.getElementsByClassName(
-                "o_sign_sign_item_navigator"
-            )
-        );
-        const navLine = $(
-            this.iframe.el.contentDocument.getElementsByClassName(
-                "o_sign_sign_item_navline"
-            )
-        );
-        if (navLine.length === 0) {
-            target.append($("<div class='o_sign_sign_item_navline'/>"));
-        }
-        if (navigator.length === 0) {
-            target.append($("<div class='o_sign_sign_item_navigator'/>"));
+        const doc = this.iframe().contentDocument;
+        const target = doc.getElementById("viewerContainer");
+        for (const className of [
+            "o_sign_sign_item_navline",
+            "o_sign_sign_item_navigator",
+        ]) {
+            if (doc.getElementsByClassName(className).length === 0) {
+                const div = doc.createElement("div");
+                div.className = className;
+                target.append(div);
+            }
         }
         // Load navigator
         this.navigate();
@@ -81,32 +76,20 @@ export class SignOcaPdfPortal extends SignOcaPdf {
         });
     }
     navigate() {
-        const target = this.iframe.el.contentDocument.getElementById("viewerContainer");
+        const target = this.iframe().contentDocument.getElementById("viewerContainer");
         this.navigator = startSignItemNavigator(this, target, this.env);
     }
 }
-SignOcaPdfPortal.template = "sign_oca.SignOcaPdfPortal";
-SignOcaPdfPortal.props = {
-    access_token: String,
-    signer_id: Number,
-};
-SignOcaPdfPortal.components = {MainComponentsContainer};
 
 export async function initDocumentToSign(document, sign_oca_backend_info) {
-    const env = makeEnv();
-    await startServices(env);
+    // Odoo 20 / OWL 3: services are App plugins, mountComponent() sets them up.
     await whenReady();
-    const app = new App(SignOcaPdfPortal, {
-        getTemplate,
-        env: env,
-        dev: env.debug,
+    await mountComponent(SignOcaPdfPortal, document.body, {
+        name: "Sign OCA portal",
         props: {
             access_token: sign_oca_backend_info.access_token,
             signer_id: sign_oca_backend_info.signer_id,
         },
-        translateFn: _t,
-        translatableAttributes: ["data-tooltip"],
     });
-    await app.mount(document.body);
 }
 export default {SignOcaPdfPortal, initDocumentToSign};
