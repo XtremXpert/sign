@@ -4,7 +4,7 @@
 {
     "name": "Sign Oca",
     "summary": "Allow to sign documents inside Odoo CE",
-    "version": "20.0.1.0.0",
+    "version": "20.0.1.0.1",
     "license": "AGPL-3",
     "author": "Dixmit,Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/sign",
@@ -15,6 +15,7 @@
         "views/sign_portal_oca_templates.xml",
         "views/portal_templates.xml",
         "data/data.xml",
+        "data/portal_entry.xml",
         "wizards/res_config_settings_views.xml",
         "data/ir_sequence_data.xml",
         "wizards/sign_oca_template_generate.xml",

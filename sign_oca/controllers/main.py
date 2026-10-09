@@ -194,13 +194,16 @@ class PortalSign(CustomerPortal):
         )
         return values
 
-    def _prepare_home_portal_values(self, counters):
-        values = super()._prepare_home_portal_values(counters)
-        if "sign_oca_count" in counters:
-            domain = self.get_sign_requests_domain(request)
-            SignRequests = request.env["sign.oca.request.signer"].sudo()
-            values["sign_oca_count"] = SignRequests.search_count(domain)
-        return values
+    def _prepare_portal_counter_values(self, counter):
+        # Odoo 20: /my/counters computes each counter from (model, domain,
+        # access); _prepare_home_portal_values no longer feeds the cards.
+        if counter == "sign_oca_count":
+            return (
+                "sign.oca.request.signer",
+                self.get_sign_requests_domain(request),
+                "sudo",
+            )
+        return super()._prepare_portal_counter_values(counter)
 
     @http.route(
         ["/my/sign_requests", "/my/sign_requests/page/<int:page>"],

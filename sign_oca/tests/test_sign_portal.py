@@ -75,3 +75,24 @@ class TestSignPortal(SignOcaCommon, HttpCase):
             val = self.request.signer_ids.get_info()["items"][key].copy()
             val["value"] = "My Name"
             data[key] = val
+
+    def test_portal_home_card_and_counter(self):
+        # Odoo 20: /my cards are portal.entry records, shown once /my/counters
+        # returns a non-zero count for their placeholder.
+        self.env["res.users"].with_context(no_reset_password=True).create(
+            {
+                "name": "Signer User",
+                "login": "signer_portal",
+                "password": "signer_portal",
+                "partner_id": self.signer.id,
+                "group_ids": [(6, 0, [self.env.ref("base.group_portal").id])],
+            }
+        )
+        self.authenticate("signer_portal", "signer_portal")
+        home = self.url_open("/my")
+        home.raise_for_status()
+        self.assertIn('href="/my/sign_requests"', home.text)
+        counters = self.make_jsonrpc_request(
+            "/my/counters", {"counters": {"sign_oca_count": "common_category"}}
+        )
+        self.assertEqual(counters["sign_oca_count"], 1)
